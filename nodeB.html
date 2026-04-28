@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NodeHive — Node B</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #070a0f;
+    --surface: #0d1117;
+    --border: #1a2332;
+    --accent: #0066ff;
+    --accent2: #00f5c4;
+    --text: #e8edf5;
+    --muted: #4a5568;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 32px;
+    overflow: hidden;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse 70% 60% at 50% 50%, rgba(0,102,255,0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .grid-bg {
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,102,255,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,102,255,0.04) 1px, transparent 1px);
+    background-size: 48px 48px;
+    pointer-events: none;
+  }
+  .node-id {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    text-align: center;
+  }
+  .hex-container {
+    position: relative;
+    width: 200px;
+    height: 200px;
+    margin: 0 auto 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .hex-ring {
+    position: absolute;
+    inset: 0;
+    animation: spin 12s linear infinite;
+    opacity: 0.2;
+    transition: opacity 0.5s;
+  }
+  .hex-ring.active { opacity: 1; animation: spin 3s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .hex-core {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+  }
+  .hex-letter {
+    font-size: 64px;
+    font-weight: 800;
+    color: var(--accent);
+    line-height: 1;
+    transition: all 0.3s;
+  }
+  .hex-letter.active {
+    color: var(--accent2);
+    text-shadow: 0 0 30px rgba(0,245,196,0.5);
+  }
+  .node-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-top: 4px;
+  }
+  .status-display {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+  .status-main {
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--text);
+    margin-bottom: 8px;
+    transition: all 0.3s;
+    letter-spacing: -0.5px;
+  }
+  .status-main.active { color: var(--accent2); }
+  .status-sub {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 1px;
+  }
+  .log-panel {
+    width: 100%;
+    max-width: 400px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  .log-panel::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    opacity: 0.4;
+  }
+  .log-title {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .log-entry {
+    display: flex;
+    gap: 10px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    padding: 4px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    opacity: 0;
+    transform: translateY(4px);
+    animation: fadeIn 0.3s forwards;
+  }
+  .log-entry.active { color: var(--text); }
+  @keyframes fadeIn { to { opacity: 1; transform: translateY(0); } }
+  .log-ts { min-width: 24px; color: var(--muted); }
+  .progress-bar {
+    width: 100%;
+    height: 2px;
+    background: var(--border);
+    border-radius: 2px;
+    margin-top: 12px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 2px;
+    transition: width 0.4s ease;
+  }
+  /* Pulse rings when active */
+  .pulse-ring {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 2px solid var(--accent);
+    opacity: 0;
+    pointer-events: none;
+  }
+  .pulse-ring.active {
+    animation: ringpulse 1.5s ease-out infinite;
+  }
+  .pulse-ring:nth-child(2) { animation-delay: 0.5s; }
+  .pulse-ring:nth-child(3) { animation-delay: 1s; }
+  @keyframes ringpulse {
+    0% { transform: scale(0.7); opacity: 0.6; }
+    100% { transform: scale(1.3); opacity: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="grid-bg"></div>
+
+<div class="node-id">// NodeHive Network — Device Node</div>
+
+<div class="hex-container">
+  <div class="pulse-ring" id="ring1"></div>
+  <div class="pulse-ring" id="ring2"></div>
+  <div class="pulse-ring" id="ring3"></div>
+  <svg class="hex-ring" viewBox="0 0 200 200" id="hex-ring-svg">
+    <polygon points="100,10 180,55 180,145 100,190 20,145 20,55"
+      fill="none" stroke="#0066ff" stroke-width="1.5" stroke-dasharray="8 4"/>
+    <polygon points="100,25 165,62 165,138 100,175 35,138 35,62"
+      fill="none" stroke="#0066ff" stroke-width="0.5" opacity="0.5"/>
+  </svg>
+  <div class="hex-core">
+    <div class="hex-letter" id="hex-letter">B</div>
+    <div class="node-label">Node Blpha</div>
+  </div>
+</div>
+
+<div class="status-display">
+  <div class="status-main" id="status-main">IDLE</div>
+  <div class="status-sub" id="status-sub">Waiting for task assignment</div>
+</div>
+
+<div class="log-panel">
+  <div class="log-title">// Activity Log</div>
+  <div id="log-container">
+    <div class="log-entry">
+      <span class="log-ts">—</span>
+      <span>Node online. Standing by...</span>
+    </div>
+  </div>
+  <div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  const SUPABASE_URL = 'https://gyqzckyjxlcqqdfugcgg.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd5cXpja3lqeGxjcXFkZnVnY2dnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczNjIyOTAsImV4cCI6MjA5MjkzODI5MH0.bn53GTMchXySu9pYlV87RvL93mmsaL3s3RfYxrDbVjE';
+
+  const { createClient } = supabase;
+  const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  const statusMain = document.getElementById('status-main');
+  const statusSub = document.getElementById('status-sub');
+  const hexLetter = document.getElementById('hex-letter');
+  const hexRing = document.getElementById('hex-ring-svg');
+  const progress = document.getElementById('progress');
+  const logContainer = document.getElementById('log-container');
+  const rings = [document.getElementById('ring1'), document.getElementById('ring2'), document.getElementById('ring3')];
+
+  let progInterval = null;
+
+  function ts() {
+    return new Date().toLocaleTimeString('en', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  }
+
+  function addLog(msg, active) {
+    const div = document.createElement('div');
+    div.className = 'log-entry' + (active ? ' active' : '');
+    div.innerHTML = `<span class="log-ts">${ts()}</span><span>${msg}</span>`;
+    logContainer.appendChild(div);
+    if (logContainer.children.length > 6) logContainer.removeChild(logContainer.firstChild);
+  }
+
+  function setActive(active) {
+    hexLetter.className = 'hex-letter' + (active ? ' active' : '');
+    hexRing.classList.toggle('active', active);
+    rings.forEach(r => r.classList.toggle('active', active));
+    statusMain.className = 'status-main' + (active ? ' active' : '');
+  }
+
+  function applyState(data) {
+    const na = data.node_b_status;
+    const s = data.status;
+
+    if (s === 'idle') {
+      setActive(false);
+      statusMain.textContent = 'IDLE';
+      statusSub.textContent = 'Waiting for task assignment';
+      progress.style.width = '0%';
+      clearInterval(progInterval);
+      return;
+    }
+
+    if (s === 'splitting' || s === 'received') {
+      setActive(false);
+      statusMain.textContent = 'RECEIVING';
+      statusSub.textContent = 'Task chunk incoming...';
+      addLog('Receiving task chunk from center...', true);
+      progress.style.width = '10%';
+    }
+
+    if (na === 'processing') {
+      setActive(true);
+      statusMain.textContent = 'PROCESSING';
+      statusSub.textContent = 'Executing compute workload';
+      addLog('Processing assigned chunk...', true);
+      let p = 10;
+      clearInterval(progInterval);
+      progInterval = setInterval(() => {
+        p = Math.min(p + 2, 90);
+        progress.style.width = p + '%';
+      }, 200);
+    }
+
+    if (na === 'done') {
+      setActive(false);
+      clearInterval(progInterval);
+      progress.style.width = '100%';
+      statusMain.textContent = 'DONE';
+      statusSub.textContent = 'Result returned to center';
+      addLog('Result sent to NodeHive Center ✓', false);
+    }
+  }
+
+  sb.channel('node-b').on('postgres_changes', {
+    event: 'UPDATE', schema: 'public', table: 'session', filter: 'id=eq.1'
+  }, (payload) => {
+    applyState(payload.new);
+  }).subscribe();
+
+  // Init
+  sb.from('session').select('*').eq('id', 1).single().then(({ data }) => {
+    if (data) applyState(data);
+  });
+</script>
+</body>
+</html>

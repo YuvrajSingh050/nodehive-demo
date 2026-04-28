@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NodeHive — Submit Task</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #070a0f;
+    --surface: #0d1117;
+    --border: #1a2332;
+    --accent: #00f5c4;
+    --accent2: #0066ff;
+    --text: #e8edf5;
+    --muted: #4a5568;
+    --danger: #ff3d6b;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    overflow: hidden;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 60% 40% at 20% 80%, rgba(0,102,255,0.07) 0%, transparent 70%),
+      radial-gradient(ellipse 50% 50% at 80% 20%, rgba(0,245,196,0.05) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .grid-bg {
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,245,196,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,245,196,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .container {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 480px;
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 40px;
+  }
+  .logo-hex {
+    width: 36px;
+    height: 36px;
+  }
+  .logo-text {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    color: var(--accent);
+  }
+  .logo-sub {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 2px;
+    margin-top: 2px;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 32px;
+    position: relative;
+    overflow: hidden;
+  }
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    opacity: 0.6;
+  }
+  .card-title {
+    font-size: 13px;
+    font-family: 'Space Mono', monospace;
+    color: var(--accent);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+  .status-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    background: rgba(0,245,196,0.05);
+    border: 1px solid rgba(0,245,196,0.1);
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    min-height: 36px;
+  }
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--muted);
+    flex-shrink: 0;
+    transition: background 0.3s;
+  }
+  .status-dot.active { background: var(--accent); animation: pulse 1.2s infinite; }
+  .status-dot.done { background: var(--accent); animation: none; }
+  .status-dot.error { background: var(--danger); }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(0,245,196,0.4); }
+    50% { opacity: 0.7; box-shadow: 0 0 0 4px rgba(0,245,196,0); }
+  }
+  #status-text { color: var(--text); transition: color 0.3s; }
+  textarea {
+    width: 100%;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    line-height: 1.7;
+    padding: 16px;
+    resize: none;
+    height: 120px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  textarea:focus { border-color: rgba(0,245,196,0.4); }
+  textarea::placeholder { color: var(--muted); }
+  textarea:disabled { opacity: 0.5; }
+  .btn {
+    width: 100%;
+    margin-top: 14px;
+    padding: 14px;
+    background: var(--accent);
+    color: #070a0f;
+    border: none;
+    border-radius: 10px;
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .btn:hover { opacity: 0.9; }
+  .btn:active { transform: scale(0.99); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+  .result-box {
+    margin-top: 20px;
+    padding: 16px;
+    background: rgba(0,245,196,0.04);
+    border: 1px solid rgba(0,245,196,0.15);
+    border-radius: 10px;
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    line-height: 1.8;
+    color: var(--text);
+    display: none;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 220px;
+    overflow-y: auto;
+  }
+  .result-box.visible { display: block; }
+  .result-label {
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    display: none;
+  }
+  .result-label.visible { display: block; }
+  .node-badges {
+    display: flex;
+    gap: 8px;
+    margin-top: 16px;
+  }
+  .badge {
+    flex: 1;
+    padding: 8px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    text-align: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    transition: all 0.3s;
+  }
+  .badge.active {
+    border-color: rgba(0,245,196,0.3);
+    color: var(--accent);
+    background: rgba(0,245,196,0.05);
+  }
+</style>
+</head>
+<body>
+<div class="grid-bg"></div>
+<div class="container">
+  <div class="logo">
+    <svg class="logo-hex" viewBox="0 0 36 36">
+      <polygon points="18,2 32,10 32,26 18,34 4,26 4,10" fill="none" stroke="#00f5c4" stroke-width="1.5"/>
+      <polygon points="18,8 27,13 27,23 18,28 9,23 9,13" fill="rgba(0,245,196,0.1)" stroke="#00f5c4" stroke-width="0.5"/>
+      <circle cx="18" cy="18" r="3" fill="#00f5c4"/>
+    </svg>
+    <div>
+      <div class="logo-text">NodeHive</div>
+      <div class="logo-sub">DISTRIBUTED COMPUTE</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">// Submit Task</div>
+
+    <div class="status-bar">
+      <div class="status-dot" id="status-dot"></div>
+      <span id="status-text">Waiting for input...</span>
+    </div>
+
+    <textarea id="prompt" placeholder="Enter your prompt here...&#10;e.g. Explain how neural networks learn"></textarea>
+
+    <button class="btn" id="submit-btn" onclick="submitPrompt()">
+      <span>Deploy to Network</span>
+    </button>
+
+    <div class="node-badges">
+      <div class="badge" id="badge-a">Node A</div>
+      <div class="badge" id="badge-b">Node B</div>
+    </div>
+
+    <div class="result-label" id="result-label">// Result</div>
+    <div class="result-box" id="result-box"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  const SUPABASE_URL = 'https://gyqzckyjxlcqqdfugcgg.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd5cXpja3lqeGxjcXFkZnVnY2dnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczNjIyOTAsImV4cCI6MjA5MjkzODI5MH0.bn53GTMchXySu9pYlV87RvL93mmsaL3s3RfYxrDbVjE';
+  const { createClient } = supabase;
+  const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  const statusDot = document.getElementById('status-dot');
+  const statusText = document.getElementById('status-text');
+  const submitBtn = document.getElementById('submit-btn');
+  const promptEl = document.getElementById('prompt');
+  const resultBox = document.getElementById('result-box');
+  const resultLabel = document.getElementById('result-label');
+  const badgeA = document.getElementById('badge-a');
+  const badgeB = document.getElementById('badge-b');
+
+  const statusMessages = {
+    idle: 'Waiting for input...',
+    received: 'Request received by NodeHive...',
+    splitting: 'Splitting task across nodes...',
+    processing: 'Nodes processing in parallel...',
+    aggregating: 'Aggregating results...',
+    done: 'Task complete.'
+  };
+
+  function setStatus(s, isActive) {
+    statusText.textContent = statusMessages[s] || s;
+    statusDot.className = 'status-dot' + (isActive ? ' active' : s === 'done' ? ' done' : '');
+  }
+
+  sb.channel('session').on('postgres_changes', {
+    event: 'UPDATE', schema: 'public', table: 'session', filter: 'id=eq.1'
+  }, (payload) => {
+    const d = payload.new;
+    const active = ['received','splitting','processing','aggregating'].includes(d.status);
+    setStatus(d.status, active);
+
+    badgeA.className = 'badge' + (['processing','done'].includes(d.node_a_status) ? ' active' : '');
+    badgeB.className = 'badge' + (['processing','done'].includes(d.node_b_status) ? ' active' : '');
+
+    if (d.status === 'done' && d.result) {
+      resultBox.textContent = d.result;
+      resultBox.classList.add('visible');
+      resultLabel.classList.add('visible');
+      submitBtn.disabled = false;
+      promptEl.disabled = false;
+      badgeA.className = 'badge active';
+      badgeB.className = 'badge active';
+    }
+  }).subscribe();
+
+  async function submitPrompt() {
+    const prompt = promptEl.value.trim();
+    if (!prompt) return;
+    submitBtn.disabled = true;
+    promptEl.disabled = true;
+    resultBox.classList.remove('visible');
+    resultLabel.classList.remove('visible');
+    resultBox.textContent = '';
+    badgeA.className = 'badge';
+    badgeB.className = 'badge';
+    setStatus('received', true);
+
+    await sb.from('session').update({
+      status: 'received',
+      prompt: prompt,
+      result: '',
+      node_a_status: 'idle',
+      node_b_status: 'idle'
+    }).eq('id', 1);
+  }
+</script>
+</body>
+</html>

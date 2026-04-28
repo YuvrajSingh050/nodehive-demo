@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NodeHive — Center Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #070a0f;
+    --surface: #0d1117;
+    --border: #1a2332;
+    --accent: #00f5c4;
+    --accent2: #0066ff;
+    --text: #e8edf5;
+    --muted: #4a5568;
+    --warn: #ffb800;
+    --danger: #ff3d6b;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    padding: 24px;
+    gap: 20px;
+    overflow: hidden;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 80% 50% at 50% 0%, rgba(0,245,196,0.06) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 40% at 80% 100%, rgba(0,102,255,0.06) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .grid-bg {
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,245,196,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,245,196,0.025) 1px, transparent 1px);
+    background-size: 48px 48px;
+    pointer-events: none;
+    z-index: 0;
+  }
+  header {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .logo { display: flex; align-items: center; gap: 12px; }
+  .logo-hex { width: 32px; height: 32px; }
+  .logo-name { font-size: 20px; font-weight: 800; color: var(--accent); }
+  .logo-tag {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .header-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .hd { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+  .hd.live { background: var(--accent); animation: livepulse 1.5s infinite; }
+  @keyframes livepulse {
+    0%,100% { box-shadow: 0 0 0 0 rgba(0,245,196,0.5); }
+    50% { box-shadow: 0 0 0 6px rgba(0,245,196,0); }
+  }
+
+  main {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto 1fr;
+    gap: 16px;
+  }
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .panel::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    opacity: 0.4;
+  }
+  .panel-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 14px;
+  }
+  .full-width { grid-column: 1 / -1; }
+
+  /* Incoming request panel */
+  .prompt-display {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.7;
+    min-height: 40px;
+    word-break: break-word;
+  }
+  .prompt-placeholder { color: var(--muted); }
+
+  /* Orchestration visualization */
+  .orch-container {
+    position: relative;
+    height: 180px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .orch-svg { width: 100%; height: 100%; }
+
+  /* Node panels */
+  .node-status {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .node-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .node-name {
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--accent);
+  }
+  .node-badge {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    transition: all 0.3s;
+  }
+  .node-badge.active {
+    border-color: rgba(0,245,196,0.4);
+    color: var(--accent);
+    background: rgba(0,245,196,0.08);
+  }
+  .node-badge.done {
+    border-color: rgba(0,245,196,0.6);
+    color: var(--accent);
+    background: rgba(0,245,196,0.12);
+  }
+  .node-log {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.8;
+  }
+  .node-log .entry { display: flex; align-items: flex-start; gap: 8px; }
+  .node-log .entry.active { color: var(--text); }
+  .node-log .entry .ts { color: var(--muted); min-width: 20px; }
+  .progress-bar {
+    height: 2px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 8px;
+  }
+  .progress-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--accent2), var(--accent));
+    border-radius: 2px;
+    transition: width 0.5s ease;
+  }
+
+  /* Footer */
+  footer {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .phase-indicator {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .phase-step {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    transition: color 0.3s;
+  }
+  .phase-step.active { color: var(--accent); }
+  .phase-step.done { color: rgba(0,245,196,0.4); }
+  .phase-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+  .phase-line { width: 20px; height: 1px; background: currentColor; opacity: 0.3; }
+  .result-pill {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  /* Animations */
+  @keyframes flow {
+    0% { stroke-dashoffset: 20; }
+    100% { stroke-dashoffset: 0; }
+  }
+  .flow-line {
+    stroke-dasharray: 4 4;
+    animation: flow 0.6s linear infinite;
+    opacity: 0;
+    transition: opacity 0.4s;
+  }
+  .flow-line.active { opacity: 1; }
+  .node-circle { transition: all 0.4s; }
+  .node-circle.active { filter: drop-shadow(0 0 6px rgba(0,245,196,0.6)); }
+</style>
+</head>
+<body>
+<div class="grid-bg"></div>
+
+<header>
+  <div class="logo">
+    <svg class="logo-hex" viewBox="0 0 32 32">
+      <polygon points="16,2 28,9 28,23 16,30 4,23 4,9" fill="none" stroke="#00f5c4" stroke-width="1.5"/>
+      <polygon points="16,7 24,12 24,20 16,25 8,20 8,12" fill="rgba(0,245,196,0.08)" stroke="#00f5c4" stroke-width="0.5"/>
+      <circle cx="16" cy="16" r="3" fill="#00f5c4"/>
+    </svg>
+    <div>
+      <div class="logo-name">NodeHive Center</div>
+      <div class="logo-tag">Orchestration Dashboard</div>
+    </div>
+  </div>
+  <div class="header-status">
+    <div class="hd" id="live-dot"></div>
+    <span id="live-label">STANDBY</span>
+  </div>
+</header>
+
+<main>
+  <!-- Incoming request -->
+  <div class="panel full-width">
+    <div class="panel-label">// Incoming Request</div>
+    <div class="prompt-display" id="prompt-display">
+      <span class="prompt-placeholder">Awaiting task submission...</span>
+    </div>
+  </div>
+
+  <!-- Orchestration -->
+  <div class="panel full-width" style="padding:20px">
+    <div class="panel-label">// Task Distribution</div>
+    <div class="orch-container">
+      <svg class="orch-svg" viewBox="0 0 600 160" xmlns="http://www.w3.org/2000/svg">
+        <!-- Center node -->
+        <g id="center-node">
+          <polygon points="300,20 330,37 330,71 300,88 270,71 270,37" fill="rgba(0,245,196,0.1)" stroke="#00f5c4" stroke-width="1.5"/>
+          <text x="300" y="58" text-anchor="middle" fill="#00f5c4" font-family="'Space Mono',monospace" font-size="9" letter-spacing="1">CENTER</text>
+        </g>
+        <!-- Lines to Node A -->
+        <line id="line-a" class="flow-line" x1="270" y1="54" x2="130" y2="100" stroke="#00f5c4" stroke-width="1.5"/>
+        <!-- Lines to Node B -->
+        <line id="line-b" class="flow-line" x1="330" y1="54" x2="470" y2="100" stroke="#00f5c4" stroke-width="1.5"/>
+        <!-- Node A -->
+        <g id="node-a-vis">
+          <circle cx="100" cy="110" r="30" class="node-circle" fill="rgba(0,102,255,0.1)" stroke="#0066ff" stroke-width="1.5"/>
+          <text x="100" y="107" text-anchor="middle" fill="#0066ff" font-family="'Space Mono',monospace" font-size="9" letter-spacing="1">NODE</text>
+          <text x="100" y="120" text-anchor="middle" fill="#0066ff" font-family="'Space Mono',monospace" font-size="11" font-weight="700">A</text>
+          <text id="na-status" x="100" y="152" text-anchor="middle" fill="#4a5568" font-family="'Space Mono',monospace" font-size="8">IDLE</text>
+        </g>
+        <!-- Node B -->
+        <g id="node-b-vis">
+          <circle cx="500" cy="110" r="30" class="node-circle" fill="rgba(0,102,255,0.1)" stroke="#0066ff" stroke-width="1.5"/>
+          <text x="500" y="107" text-anchor="middle" fill="#0066ff" font-family="'Space Mono',monospace" font-size="9" letter-spacing="1">NODE</text>
+          <text x="500" y="120" text-anchor="middle" fill="#0066ff" font-family="'Space Mono',monospace" font-size="11" font-weight="700">B</text>
+          <text id="nb-status" x="500" y="152" text-anchor="middle" fill="#4a5568" font-family="'Space Mono',monospace" font-size="8">IDLE</text>
+        </g>
+        <!-- Gemini label -->
+        <g id="gemini-vis" opacity="0" style="transition:opacity 0.5s">
+          <rect x="230" y="130" width="140" height="22" rx="4" fill="rgba(0,102,255,0.15)" stroke="rgba(0,102,255,0.4)" stroke-width="1"/>
+          <text x="300" y="145" text-anchor="middle" fill="#0066ff" font-family="'Space Mono',monospace" font-size="9" letter-spacing="1">GEMINI API</text>
+        </g>
+      </svg>
+    </div>
+  </div>
+
+  <!-- Node A log -->
+  <div class="panel">
+    <div class="panel-label">// Node A</div>
+    <div class="node-status">
+      <div class="node-header">
+        <div class="node-name">Node A</div>
+        <div class="node-badge" id="badge-a">IDLE</div>
+      </div>
+      <div class="node-log" id="log-a">
+        <div class="entry"><span class="ts">—</span><span>Waiting for task...</span></div>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="prog-a"></div></div>
+    </div>
+  </div>
+
+  <!-- Node B log -->
+  <div class="panel">
+    <div class="panel-label">// Node B</div>
+    <div class="node-status">
+      <div class="node-header">
+        <div class="node-name">Node B</div>
+        <div class="node-badge" id="badge-b">IDLE</div>
+      </div>
+      <div class="node-log" id="log-b">
+        <div class="entry"><span class="ts">—</span><span>Waiting for task...</span></div>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="prog-b"></div></div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="phase-indicator" id="phases">
+    <div class="phase-step" id="ph-received"><div class="phase-dot"></div>Received</div>
+    <div class="phase-line"></div>
+    <div class="phase-step" id="ph-splitting"><div class="phase-dot"></div>Splitting</div>
+    <div class="phase-line"></div>
+    <div class="phase-step" id="ph-processing"><div class="phase-dot"></div>Processing</div>
+    <div class="phase-line"></div>
+    <div class="phase-step" id="ph-aggregating"><div class="phase-dot"></div>Aggregating</div>
+    <div class="phase-line"></div>
+    <div class="phase-step" id="ph-done"><div class="phase-dot"></div>Done</div>
+  </div>
+  <div class="result-pill" id="result-pill"></div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  const SUPABASE_URL = 'https://gyqzckyjxlcqqdfugcgg.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd5cXpja3lqeGxjcXFkZnVnY2dnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczNjIyOTAsImV4cCI6MjA5MjkzODI5MH0.bn53GTMchXySu9pYlV87RvL93mmsaL3s3RfYxrDbVjE';
+  const GEMINI_KEY = 'AIzaSyBi-XdLNt4kMytpHnm37JAFssSXMHzfbNw';
+
+  const { createClient } = supabase;
+  const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  let processing = false;
+
+  function ts() {
+    return new Date().toLocaleTimeString('en',{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  }
+
+  function setPhase(status) {
+    const phases = ['received','splitting','processing','aggregating','done'];
+    const idx = phases.indexOf(status);
+    phases.forEach((p, i) => {
+      const el = document.getElementById('ph-' + p);
+      if (!el) return;
+      el.className = 'phase-step' + (i < idx ? ' done' : i === idx ? ' active' : '');
+    });
+  }
+
+  function setNodeBadge(node, state) {
+    const badge = document.getElementById('badge-' + node);
+    badge.textContent = state.toUpperCase();
+    badge.className = 'node-badge' + (state === 'processing' ? ' active' : state === 'done' ? ' done' : '');
+  }
+
+  function addLog(node, msg, isActive) {
+    const log = document.getElementById('log-' + node);
+    const div = document.createElement('div');
+    div.className = 'entry' + (isActive ? ' active' : '');
+    div.innerHTML = `<span class="ts">${ts()}</span><span>${msg}</span>`;
+    log.appendChild(div);
+    if (log.children.length > 5) log.removeChild(log.firstChild);
+  }
+
+  function setProgress(node, pct) {
+    document.getElementById('prog-' + node).style.width = pct + '%';
+  }
+
+  function setFlowLine(node, active) {
+    document.getElementById('line-' + node).classList.toggle('active', active);
+  }
+
+  function setNodeVisActive(node, active) {
+    const circ = document.querySelector('#node-' + node + '-vis circle');
+    if (circ) circ.classList.toggle('active', active);
+    const st = document.getElementById('n' + node[0] + '-status');
+    if (st) {
+      st.textContent = active ? 'ACTIVE' : (active === false ? 'IDLE' : 'DONE');
+      st.setAttribute('fill', active ? '#00f5c4' : '#4a5568');
+    }
+  }
+
+  async function callGemini(prompt) {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }]
+        })
+      }
+    );
+    const data = await res.json();
+    return data.candidates?.[0]?.content?.parts?.[0]?.text || 'No response.';
+  }
+
+  async function handleReceived(prompt) {
+    if (processing) return;
+    processing = true;
+
+    // Reset UI
+    document.getElementById('prompt-display').textContent = prompt;
+    document.getElementById('live-dot').className = 'hd live';
+    document.getElementById('live-label').textContent = 'PROCESSING';
+    document.getElementById('log-a').innerHTML = '';
+    document.getElementById('log-b').innerHTML = '';
+    setProgress('a', 0); setProgress('b', 0);
+    document.getElementById('result-pill').textContent = '';
+
+    // Phase: splitting
+    await delay(600);
+    setPhase('splitting');
+    await sb.from('session').update({ status: 'splitting', node_a_status: 'idle', node_b_status: 'idle' }).eq('id', 1);
+    setFlowLine('a', true); setFlowLine('b', true);
+    document.getElementById('gemini-vis').style.opacity = '0';
+    addLog('a', 'Receiving task chunk...', true);
+    addLog('b', 'Receiving task chunk...', true);
+    setNodeBadge('a', 'receiving'); setNodeBadge('b', 'receiving');
+
+    await delay(800);
+
+    // Phase: processing
+    setPhase('processing');
+    await sb.from('session').update({ status: 'processing', node_a_status: 'processing', node_b_status: 'processing' }).eq('id', 1);
+    addLog('a', 'Processing...', true);
+    addLog('b', 'Processing...', true);
+    setNodeBadge('a', 'processing'); setNodeBadge('b', 'processing');
+    setNodeVisActive('a', true); setNodeVisActive('b', true);
+    document.getElementById('gemini-vis').style.opacity = '1';
+
+    // Animate progress
+    let p = 0;
+    const progInterval = setInterval(() => {
+      p = Math.min(p + 3, 85);
+      setProgress('a', p); setProgress('b', p);
+    }, 150);
+
+    // Call Gemini
+    const result = await callGemini(prompt);
+
+    clearInterval(progInterval);
+    setProgress('a', 100); setProgress('b', 100);
+
+    // Phase: aggregating
+    setPhase('aggregating');
+    await sb.from('session').update({ status: 'aggregating' }).eq('id', 1);
+    setFlowLine('a', false); setFlowLine('b', false);
+    addLog('a', 'Returning result...', false);
+    addLog('b', 'Returning result...', false);
+    setNodeBadge('a', 'done'); setNodeBadge('b', 'done');
+
+    await delay(700);
+
+    // Phase: done
+    setPhase('done');
+    await sb.from('session').update({
+      status: 'done',
+      result: result,
+      node_a_status: 'done',
+      node_b_status: 'done'
+    }).eq('id', 1);
+
+    document.getElementById('live-dot').className = 'hd';
+    document.getElementById('live-label').textContent = 'COMPLETE';
+    document.getElementById('result-pill').textContent = 'Result delivered ✓';
+    document.getElementById('gemini-vis').style.opacity = '0';
+
+    processing = false;
+  }
+
+  function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+  sb.channel('session-dashboard').on('postgres_changes', {
+    event: 'UPDATE', schema: 'public', table: 'session', filter: 'id=eq.1'
+  }, (payload) => {
+    const d = payload.new;
+    if (d.status === 'received' && !processing) {
+      handleReceived(d.prompt);
+    }
+  }).subscribe();
+
+  // Init
+  sb.from('session').select('*').eq('id', 1).single().then(({ data }) => {
+    if (data && data.status !== 'idle') {
+      document.getElementById('prompt-display').textContent = data.prompt || '';
+      setPhase(data.status);
+    }
+  });
+</script>
+</body>
+</html>
