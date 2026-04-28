@@ -294,7 +294,7 @@
   }
 
   sb.channel('session').on('postgres_changes', {
-    event: 'UPDATE', schema: 'public', table: 'session', filter: 'id=eq.1'
+    event: '*', schema: 'public', table: 'session'
   }, (payload) => {
     const d = payload.new;
     const active = ['received','splitting','processing','aggregating'].includes(d.status);

@@ -510,19 +510,21 @@
   function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 
   sb.channel('session-dashboard').on('postgres_changes', {
-    event: 'UPDATE', schema: 'public', table: 'session', filter: 'id=eq.1'
+    event: '*', schema: 'public', table: 'session'
   }, (payload) => {
     const d = payload.new;
+    console.log('Realtime event:', d);
     if (d.status === 'received' && !processing) {
       handleReceived(d.prompt);
     }
-  }).subscribe();
+  }).subscribe((status) => { console.log('Realtime status:', status); });
 
   // Init
-  sb.from('session').select('*').eq('id', 1).single().then(({ data }) => {
-    if (data && data.status !== 'idle') {
-      document.getElementById('prompt-display').textContent = data.prompt || '';
-      setPhase(data.status);
+  sb.from('session').select('*').eq('id', 1).then(({ data, error }) => {
+    console.log('Init fetch:', data, error);
+    if (data && data[0] && data[0].status !== 'idle') {
+      document.getElementById('prompt-display').textContent = data[0].prompt || '';
+      setPhase(data[0].status);
     }
   });
 </script>
