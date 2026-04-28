@@ -367,7 +367,14 @@
   const GEMINI_KEY = 'AIzaSyBi-XdLNt4kMytpHnm37JAFssSXMHzfbNw';
 
   const { createClient } = supabase;
-  const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+  const sb = createClient(SUPABASE_URL, SUPABASE_KEY, {
+    global: {
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY
+      }
+    }
+  });
 
   let processing = false;
 

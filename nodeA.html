@@ -233,7 +233,14 @@
   const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd5cXpja3lqeGxjcXFkZnVnY2dnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczNjIyOTAsImV4cCI6MjA5MjkzODI5MH0.bn53GTMchXySu9pYlV87RvL93mmsaL3s3RfYxrDbVjE';
 
   const { createClient } = supabase;
-  const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+  const sb = createClient(SUPABASE_URL, SUPABASE_KEY, {
+    global: {
+      headers: {
+        "apikey": SUPABASE_KEY,
+        "Authorization": "Bearer " + SUPABASE_KEY
+      }
+    }
+  });
 
   const statusMain = document.getElementById('status-main');
   const statusSub = document.getElementById('status-sub');
@@ -309,14 +316,14 @@
   }
 
   sb.channel('node-a').on('postgres_changes', {
-    event: 'UPDATE', schema: 'public', table: 'session', filter: 'id=eq.1'
+    event: '*', schema: 'public', table: 'session'
   }, (payload) => {
     applyState(payload.new);
   }).subscribe();
 
   // Init
-  sb.from('session').select('*').eq('id', 1).single().then(({ data }) => {
-    if (data) applyState(data);
+  sb.from('session').select('*').eq('id', 1).then(({ data }) => {
+    if (data && data[0]) applyState(data[0]);
   });
 </script>
 </body>
