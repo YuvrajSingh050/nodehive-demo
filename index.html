@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>NodeHive — Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#212121;--s1:#2f2f2f;--s2:#3a3a3a;--border:#4a4a4a;
+  --text:#ececec;--muted:#8e8ea0;--muted2:#565869;
+  --green:#10a37f;--yellow:#f5a623;--blue:#4a9eff;--red:#ef4444;
+  --sans:'Inter',sans-serif;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--sans);overflow:hidden;}
+.shell{display:flex;height:100vh;}
+
+/* Sidebar */
+.sidebar{width:220px;min-width:220px;background:var(--s1);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:0;}
+.logo-area{padding:20px 18px;border-bottom:1px solid var(--border);}
+.logo{font-size:18px;font-weight:600;}
+.logo span{color:var(--green);}
+.logo-sub{font-size:9px;font-family:monospace;color:var(--muted);margin-top:3px;letter-spacing:1.5px;}
+.nav{flex:1;padding:12px 8px;}
+.nav-s{font-size:9px;font-family:monospace;color:var(--muted);letter-spacing:1.5px;padding:0 10px;margin:14px 0 5px;}
+.nav-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;color:var(--muted);transition:all .15s;margin-bottom:2px;}
+.nav-item:hover{color:var(--text);background:var(--s2);}
+.nav-item.active{color:var(--text);background:var(--s2);border-left:2px solid var(--green);}
+.badge{margin-left:auto;font-size:9px;font-family:monospace;padding:2px 6px;border-radius:5px;background:var(--s2);color:var(--muted);}
+.sfooter{padding:14px 18px;border-top:1px solid var(--border);}
+.netpill{display:flex;align-items:center;gap:7px;font-size:10px;font-family:monospace;color:var(--muted);}
+.pulse{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(16,163,127,.5);}50%{box-shadow:0 0 0 5px rgba(16,163,127,0);}}
+
+/* Main */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.topbar{height:50px;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 22px;gap:14px;background:var(--bg);}
+.ptitle{font-size:14px;font-weight:600;flex:1;}
+.tstat{font-size:10px;font-family:monospace;color:var(--muted);}
+.tstat b{color:var(--green);}
+.content{flex:1;overflow-y:auto;padding:20px 22px;}
+.content::-webkit-scrollbar{width:4px;}
+.content::-webkit-scrollbar-thumb{background:var(--border);}
+
+.page{display:none;}
+.page.active{display:block;animation:fadein .2s ease;}
+@keyframes fadein{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+
+/* Cards */
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px;}
+.card{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:16px;}
+.card-l{font-size:9px;font-family:monospace;color:var(--muted);letter-spacing:1.5px;margin-bottom:7px;}
+.card-v{font-size:26px;font-weight:700;}
+.card-v.g{color:var(--green);}
+.card-v.y{color:var(--yellow);}
+.card-v.b{color:var(--blue);}
+.card-v.r{color:var(--red);}
+.card-s{font-size:10px;color:var(--muted);margin-top:4px;font-family:monospace;}
+
+/* Two col */
+.two{display:grid;grid-template-columns:1.4fr 1fr;gap:12px;margin-bottom:18px;}
+
+/* Job submit */
+.panel{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:18px;}
+.panel-title{font-size:12px;font-weight:600;margin-bottom:14px;color:var(--muted);letter-spacing:.5px;}
+.job-row{display:flex;gap:8px;margin-bottom:12px;}
+.jinput{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:var(--sans);font-size:13px;outline:none;transition:border .2s;}
+.jinput:focus{border-color:var(--muted);}
+.jselect{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:var(--sans);font-size:13px;outline:none;}
+.jbtn{padding:9px 16px;border-radius:8px;background:var(--green);border:none;color:#fff;font-family:var(--sans);font-weight:600;font-size:12px;cursor:pointer;transition:opacity .15s;}
+.jbtn:hover{opacity:.85;}
+
+/* Task chips */
+.tchips{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:4px;}
+.tc{background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:8px;text-align:center;transition:all .3s;}
+.tc.assigned{border-color:var(--blue);background:rgba(74,158,255,.08);}
+.tc.running{border-color:var(--yellow);background:rgba(245,166,35,.08);}
+.tc.done{border-color:var(--green);background:rgba(16,163,127,.08);}
+.tc-id{font-family:monospace;font-size:9px;color:var(--muted);}
+.tc-s{font-size:9px;font-family:monospace;margin-top:2px;color:var(--muted2);}
+.tc.assigned .tc-s{color:var(--blue);}
+.tc.running .tc-s{color:var(--yellow);}
+.tc.done .tc-s{color:var(--green);}
+
+/* Feed */
+.feed-item{display:flex;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:11px;font-family:monospace;}
+.feed-item:last-child{border-bottom:none;}
+.ft{color:var(--muted2);min-width:48px;}
+.fd{width:5px;height:5px;border-radius:50%;margin-top:4px;flex-shrink:0;}
+.fd.g{background:var(--green);}
+.fd.y{background:var(--yellow);}
+.fd.b{background:var(--blue);}
+.fd.r{background:var(--red);}
+.fm{color:var(--text);}
+
+/* Nodes grid */
+.ngrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+.ncard{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:14px;transition:border .2s;}
+.ncard:hover{border-color:var(--muted2);}
+.nc-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.nc-name{font-weight:600;font-size:13px;font-family:monospace;}
+.nc-badge{font-size:9px;font-family:monospace;padding:2px 7px;border-radius:10px;font-weight:600;}
+.nc-badge.online{background:rgba(16,163,127,.15);color:var(--green);}
+.nc-badge.idle{background:rgba(74,158,255,.12);color:var(--blue);}
+.nc-badge.offline{background:rgba(239,68,68,.12);color:var(--red);}
+.nc-meta{font-size:10px;font-family:monospace;color:var(--muted);margin-bottom:8px;}
+.brow{display:flex;justify-content:space-between;font-size:9px;font-family:monospace;color:var(--muted);margin-bottom:3px;margin-top:7px;}
+.btrack{height:3px;background:var(--bg);border-radius:2px;overflow:hidden;}
+.bfill{height:100%;border-radius:2px;}
+.bfill.cpu{background:var(--blue);}
+.bfill.mem{background:var(--green);}
+.nc-tasks{font-size:9px;font-family:monospace;color:var(--muted);margin-top:8px;}
+.nc-tasks span{color:var(--yellow);}
+
+/* Tasks table */
+.ttable{background:var(--s1);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+.thead{display:grid;grid-template-columns:80px 1fr 100px 110px 120px;background:var(--s2);border-bottom:1px solid var(--border);}
+.thead div{padding:9px 12px;font-size:9px;font-family:monospace;color:var(--muted);letter-spacing:1px;}
+.trow{display:grid;grid-template-columns:80px 1fr 100px 110px 120px;border-bottom:1px solid rgba(255,255,255,.04);align-items:center;transition:background .1s;}
+.trow:last-child{border-bottom:none;}
+.trow:hover{background:var(--s2);}
+.tcell{padding:9px 12px;font-size:11px;font-family:monospace;}
+.tcell.id{color:var(--muted2);}
+.spill{display:inline-block;padding:2px 7px;border-radius:8px;font-size:9px;font-weight:600;}
+.spill.completed{background:rgba(16,163,127,.15);color:var(--green);}
+.spill.running{background:rgba(245,166,35,.15);color:var(--yellow);}
+.spill.pending{background:var(--s2);color:var(--muted);}
+.mbar{height:3px;background:var(--bg);border-radius:2px;width:70px;overflow:hidden;}
+.mfill{height:100%;background:var(--blue);border-radius:2px;}
+
+/* Settings */
+.sgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.sfield{margin-bottom:12px;}
+.sfield label{display:block;font-size:10px;font-family:monospace;color:var(--muted);margin-bottom:5px;}
+.sfield input,.sfield select{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:8px 11px;color:var(--text);font-family:monospace;font-size:12px;outline:none;}
+.sfield input:focus,.sfield select:focus{border-color:var(--muted);}
+.tog-row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);}
+.tog-row:last-child{border-bottom:none;}
+.tog-info{font-size:12px;}
+.tog-sub{font-size:10px;font-family:monospace;color:var(--muted);margin-top:1px;}
+.tog{width:34px;height:18px;background:var(--border);border-radius:9px;cursor:pointer;position:relative;transition:background .2s;}
+.tog.on{background:var(--green);}
+.tog::after{content:'';position:absolute;width:12px;height:12px;background:#fff;border-radius:50%;top:3px;left:3px;transition:left .2s;}
+.tog.on::after{left:19px;}
+.save{width:100%;padding:10px;background:var(--green);color:#fff;border:none;border-radius:8px;font-family:var(--sans);font-weight:600;font-size:13px;cursor:pointer;margin-top:14px;transition:opacity .15s;}
+.save:hover{opacity:.85;}
+
+/* Complete banner */
+.cbanner{display:none;align-items:center;gap:9px;background:rgba(16,163,127,.1);border:1px solid var(--green);border-radius:8px;padding:10px 14px;margin-top:12px;}
+.cbanner.show{display:flex;}
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="sidebar">
+    <div class="logo-area">
+      <div class="logo">Node<span>Hive</span></div>
+      <div class="logo-sub">DISTRIBUTED COMPUTE</div>
+    </div>
+    <nav class="nav">
+      <div class="nav-s">OVERVIEW</div>
+      <div class="nav-item active" data-page="dashboard">⬡ Dashboard</div>
+      <div class="nav-item" data-page="nodes">◈ Nodes <span class="badge">12</span></div>
+      <div class="nav-item" data-page="tasks">▦ Tasks <span class="badge">47</span></div>
+      <div class="nav-s">ANALYTICS</div>
+      <div class="nav-item" data-page="performance">◎ Performance</div>
+      <div class="nav-item" data-page="logs">≡ Logs</div>
+      <div class="nav-s">SYSTEM</div>
+      <div class="nav-item" data-page="settings">⚙ Settings</div>
+    </nav>
+    <div class="sfooter">
+      <div class="netpill"><div class="pulse"></div> Network Active · 12 nodes</div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="ptitle" id="ptitle">Dashboard</div>
+      <div class="tstat">NODES <b>12</b></div>
+      <div class="tstat" style="margin-left:14px;">TASKS/HR <b>184</b></div>
+      <div class="tstat" style="margin-left:14px;">UPTIME <b>99.8%</b></div>
+    </div>
+    <div class="content">
+
+      <!-- DASHBOARD -->
+      <div class="page active" id="page-dashboard">
+        <div class="cards">
+          <div class="card"><div class="card-l">ACTIVE NODES</div><div class="card-v g">8</div><div class="card-s">of 12 total</div></div>
+          <div class="card"><div class="card-l">TASKS RUNNING</div><div class="card-v b">47</div><div class="card-s">across 3 jobs</div></div>
+          <div class="card"><div class="card-l">TASKS TODAY</div><div class="card-v y">1,284</div><div class="card-s">+18% vs yesterday</div></div>
+          <div class="card"><div class="card-l">AVG LATENCY</div><div class="card-v r">42ms</div><div class="card-s">within SLA</div></div>
+        </div>
+        <div class="two">
+          <div class="panel">
+            <div class="panel-title">SUBMIT JOB</div>
+            <div class="job-row">
+              <input class="jinput" id="jobName" placeholder="Job name (e.g. Train ResNet-50)"/>
+              <select class="jselect"><option>AI Inference</option><option>Data Processing</option><option>Image Rendering</option></select>
+              <button class="jbtn" onclick="submitJob()">▶ Run</button>
+            </div>
+            <div style="font-size:9px;font-family:monospace;color:var(--muted);margin-bottom:8px;letter-spacing:1px;">HARDWARE ALLOCATION</div>
+            <div class="tchips" id="tchips">
+              <div class="tc"><div class="tc-id">TASK-01</div><div class="tc-s">idle</div></div>
+              <div class="tc"><div class="tc-id">TASK-02</div><div class="tc-s">idle</div></div>
+              <div class="tc"><div class="tc-id">TASK-03</div><div class="tc-s">idle</div></div>
+              <div class="tc"><div class="tc-id">TASK-04</div><div class="tc-s">idle</div></div>
+              <div class="tc"><div class="tc-id">TASK-05</div><div class="tc-s">idle</div></div>
+              <div class="tc"><div class="tc-id">TASK-06</div><div class="tc-s">idle</div></div>
+              <div class="tc"><div class="tc-id">TASK-07</div><div class="tc-s">idle</div></div>
+              <div class="tc"><div class="tc-id">TASK-08</div><div class="tc-s">idle</div></div>
+            </div>
+            <div class="cbanner" id="cbanner">
+              <span style="color:var(--green);font-size:16px;">✓</span>
+              <div><div style="font-weight:600;font-size:12px;color:var(--green);">Job Complete</div><div id="cname" style="font-size:10px;font-family:monospace;color:var(--muted);"></div></div>
+            </div>
+          </div>
+          <div class="panel" style="overflow-y:auto;max-height:320px;">
+            <div class="panel-title">ACTIVITY FEED</div>
+            <div id="feedList">
+              <div class="feed-item"><span class="ft">12:04:01</span><div class="fd g"></div><span class="fm">Node-07 completed Task-34</span></div>
+              <div class="feed-item"><span class="ft">12:03:58</span><div class="fd b"></div><span class="fm">Task-35 assigned to Node-03</span></div>
+              <div class="feed-item"><span class="ft">12:03:44</span><div class="fd g"></div><span class="fm">Job "ResNet Training" 87% done</span></div>
+              <div class="feed-item"><span class="ft">12:03:31</span><div class="fd y"></div><span class="fm">Node-11 CPU at 94% — throttling</span></div>
+              <div class="feed-item"><span class="ft">12:03:20</span><div class="fd b"></div><span class="fm">New job submitted: DataPipe-v2</span></div>
+              <div class="feed-item"><span class="ft">12:03:05</span><div class="fd g"></div><span class="fm">Node-02 reconnected</span></div>
+              <div class="feed-item"><span class="ft">12:02:50</span><div class="fd r"></div><span class="fm">Node-09 disconnected — reassigning</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- NODES -->
+      <div class="page" id="page-nodes">
+        <div class="cards" style="grid-template-columns:repeat(3,1fr)">
+          <div class="card"><div class="card-l">ONLINE</div><div class="card-v g">8</div></div>
+          <div class="card"><div class="card-l">IDLE</div><div class="card-v b">2</div></div>
+          <div class="card"><div class="card-l">OFFLINE</div><div class="card-v r">2</div></div>
+        </div>
+        <div class="ngrid" id="nodesGrid"></div>
+      </div>
+
+      <!-- TASKS -->
+      <div class="page" id="page-tasks">
+        <div class="cards">
+          <div class="card"><div class="card-l">TOTAL</div><div class="card-v b">47</div></div>
+          <div class="card"><div class="card-l">RUNNING</div><div class="card-v y">12</div></div>
+          <div class="card"><div class="card-l">COMPLETED</div><div class="card-v g">30</div></div>
+          <div class="card"><div class="card-l">PENDING</div><div class="card-v" style="color:var(--muted)">5</div></div>
+        </div>
+        <div class="ttable">
+          <div class="thead"><div>TASK ID</div><div>JOB NAME</div><div>NODE</div><div>STATUS</div><div>PROGRESS</div></div>
+          <div id="tasksBody"></div>
+        </div>
+      </div>
+
+      <!-- PERFORMANCE -->
+      <div class="page" id="page-performance">
+        <div class="cards">
+          <div class="card"><div class="card-l">THROUGHPUT</div><div class="card-v g">184<span style="font-size:14px;color:var(--muted)"> t/hr</span></div></div>
+          <div class="card"><div class="card-l">AVG RESPONSE</div><div class="card-v b">2.3<span style="font-size:14px;color:var(--muted)"> s</span></div></div>
+          <div class="card"><div class="card-l">NODE UPTIME</div><div class="card-v g">99.8<span style="font-size:14px;color:var(--muted)">%</span></div></div>
+          <div class="card"><div class="card-l">RAM POOLED</div><div class="card-v y">196<span style="font-size:14px;color:var(--muted)"> GB</span></div></div>
+        </div>
+        <div style="background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:18px;">
+          <div style="font-size:11px;font-family:monospace;color:var(--muted);margin-bottom:14px;letter-spacing:1px;">PERFORMANCE OVER TIME</div>
+          <p style="color:var(--muted);font-size:13px;">Charts require Chart.js. Add &lt;script src="https://cdn.jsdelivr.net/npm/chart.js"&gt;&lt;/script&gt; and initialise.</p>
+        </div>
+      </div>
+
+      <!-- LOGS -->
+      <div class="page" id="page-logs">
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:18px;font-family:monospace;font-size:11px;height:calc(100vh - 160px);overflow-y:auto;" id="logsPanel"></div>
+      </div>
+
+      <!-- SETTINGS -->
+      <div class="page" id="page-settings">
+        <div class="sgrid">
+          <div class="panel">
+            <div class="panel-title">NETWORK</div>
+            <div class="sfield"><label>MAX NODES</label><input type="number" value="50"/></div>
+            <div class="sfield"><label>TASK TIMEOUT (s)</label><input type="number" value="120"/></div>
+            <div class="sfield"><label>MIN REPUTATION SCORE</label><input type="number" value="72"/></div>
+            <div class="sfield"><label>GEO-AWARE RADIUS (km)</label><input type="number" value="500"/></div>
+            <button class="save">Save Configuration</button>
+          </div>
+          <div class="panel">
+            <div class="panel-title">COMPUTE ENGINE</div>
+            <div class="sfield"><label>MODEL</label><select><option>Gemma 2B Q4_K_M</option><option>Llama 3.1 8B</option><option>Mistral 7B</option></select></div>
+            <div class="sfield"><label>INFERENCE MODE</label><select><option selected>Distributed RPC</option><option>Single Node</option></select></div>
+            <div style="margin-top:8px;">
+              <div class="tog-row"><div><div class="tog-info">Hardware pooling</div><div class="tog-sub">Combine RAM across all nodes</div></div><div class="tog on" onclick="this.classList.toggle('on')"></div></div>
+              <div class="tog-row"><div><div class="tog-info">Fault tolerance</div><div class="tog-sub">Auto-reassign on node disconnect</div></div><div class="tog on" onclick="this.classList.toggle('on')"></div></div>
+              <div class="tog-row"><div><div class="tog-info">Geo-aware routing</div><div class="tog-sub">Prefer nearby nodes for lower latency</div></div><div class="tog on" onclick="this.classList.toggle('on')"></div></div>
+              <div class="tog-row"><div><div class="tog-info">Encrypted compute</div><div class="tog-sub">Contributors never see data or model output</div></div><div class="tog on" onclick="this.classList.toggle('on')"></div></div>
+            </div>
+            <button class="save">Save Settings</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+const pageTitles={dashboard:'Dashboard',nodes:'Nodes',tasks:'Tasks',performance:'Performance',logs:'Logs',settings:'Settings'};
+document.querySelectorAll('.nav-item').forEach(item=>{
+  item.addEventListener('click',()=>{
+    const page=item.dataset.page;
+    document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+    item.classList.add('active');
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    document.getElementById('page-'+page).classList.add('active');
+    document.getElementById('ptitle').textContent=pageTitles[page];
+    if(page==='nodes') initNodes();
+    if(page==='tasks') initTasks();
+    if(page==='logs') initLogs();
+  });
+});
+
+function submitJob(){
+  const name=document.getElementById('jobName').value||'Unnamed Job';
+  const chips=document.querySelectorAll('.tc');
+  const banner=document.getElementById('cbanner');
+  banner.classList.remove('show');
+  chips.forEach(c=>{c.className='tc';c.querySelector('.tc-s').textContent='idle';c.querySelector('.tc-s').style.color='';});
+  const nodes=['Node-03','Node-07','Node-11','Node-02','Node-05','Node-08','Node-01','Node-06'];
+  chips.forEach((chip,i)=>{
+    setTimeout(()=>{chip.classList.add('assigned');chip.querySelector('.tc-s').textContent='assigned';},i*180);
+    setTimeout(()=>{chip.classList.remove('assigned');chip.classList.add('running');chip.querySelector('.tc-s').textContent='running';},i*180+600);
+    setTimeout(()=>{
+      chip.classList.remove('running');chip.classList.add('done');chip.querySelector('.tc-s').textContent='done ✓';
+      if(i===7){setTimeout(()=>{banner.classList.add('show');document.getElementById('cname').textContent=name+' — all 8 tasks complete';},200);}
+    },i*180+1800);
+  });
+}
+
+function initNodes(){
+  const grid=document.getElementById('nodesGrid');if(grid.children.length>0)return;
+  const nodes=[
+    {id:'01',status:'online',cpu:72,mem:58,tasks:6},{id:'02',status:'online',cpu:45,mem:41,tasks:4},
+    {id:'03',status:'online',cpu:88,mem:67,tasks:7},{id:'04',status:'idle',cpu:12,mem:22,tasks:0},
+    {id:'05',status:'online',cpu:61,mem:50,tasks:5},{id:'06',status:'online',cpu:34,mem:38,tasks:3},
+    {id:'07',status:'online',cpu:95,mem:81,tasks:8},{id:'08',status:'online',cpu:53,mem:44,tasks:5},
+    {id:'09',status:'offline',cpu:0,mem:0,tasks:0},{id:'10',status:'idle',cpu:8,mem:19,tasks:0},
+    {id:'11',status:'online',cpu:77,mem:63,tasks:6},{id:'12',status:'offline',cpu:0,mem:0,tasks:0},
+  ];
+  nodes.forEach(n=>{
+    grid.innerHTML+=`<div class="ncard">
+      <div class="nc-hd"><div class="nc-name">NODE-${n.id}</div><div class="nc-badge ${n.status}">${n.status.toUpperCase()}</div></div>
+      <div class="nc-meta">Hardware pooling enabled</div>
+      <div class="brow"><span>CPU</span><span>${n.cpu}%</span></div>
+      <div class="btrack"><div class="bfill cpu" style="width:${n.cpu}%"></div></div>
+      <div class="brow"><span>MEM</span><span>${n.mem}%</span></div>
+      <div class="btrack"><div class="bfill mem" style="width:${n.mem}%"></div></div>
+      <div class="nc-tasks">Active tasks: <span>${n.tasks}</span></div>
+    </div>`;
+  });
+}
+
+function initTasks(){
+  const body=document.getElementById('tasksBody');if(body.children.length>0)return;
+  const jobs=['ResNet Inference','DataPipe-v2','ImageBatch-44','LLM Query','LogAnalysis'];
+  const nodes=['Node-01','Node-02','Node-03','Node-05','Node-06','Node-07','Node-08','Node-11'];
+  const statuses=['completed','completed','completed','running','pending'];
+  for(let i=1;i<=47;i++){
+    const st=statuses[Math.floor(Math.random()*statuses.length)];
+    const prog=st==='completed'?100:st==='running'?Math.floor(Math.random()*80)+10:0;
+    const job=jobs[Math.floor(Math.random()*jobs.length)];
+    const node=st==='pending'?'—':nodes[Math.floor(Math.random()*nodes.length)];
+    body.innerHTML+=`<div class="trow"><div class="tcell id">TSK-${String(i).padStart(3,'0')}</div><div class="tcell">${job}</div><div class="tcell" style="font-size:10px">${node}</div><div class="tcell"><span class="spill ${st}">${st}</span></div><div class="tcell"><div class="mbar"><div class="mfill" style="width:${prog}%"></div></div></div></div>`;
+  }
+}
+
+function initLogs(){
+  const panel=document.getElementById('logsPanel');if(panel.children.length>0)return;
+  const entries=[
+    ['sys','NODE-03 connected · hardware pooled · 8GB RAM added to network'],
+    ['task','Job "ResNet Inference" received · allocating 3 nodes'],
+    ['task','Node-07 allocated · contributing 16GB RAM'],
+    ['warn','Node-11 CPU at 94% · throttling applied'],
+    ['ok','Inference complete · 184 tokens/s across 3 nodes'],
+    ['task','Node-02 RAM allocated · combined pool now 48GB'],
+    ['err','Node-09 disconnected · hardware removed from pool · reassigning'],
+    ['ok','Geo-aware scheduler selected Node-05 (Mumbai) for request'],
+    ['sys','Encrypted compute active · contributors cannot read model output'],
+    ['ok','Reputation updated: Node-07 → 94/100'],
+    ['ok','Job complete · result delivered · contributor earnings updated'],
+    ['sys','New node joined: Node-13 · Tier 1 · Bangalore IN · 32GB RAM'],
+  ];
+  const now=new Date();
+  entries.forEach((e,i)=>{
+    const t=new Date(now-i*45000);const ts=t.toTimeString().slice(0,8);
+    const color=e[0]==='err'?'#ef4444':e[0]==='warn'?'#f5a623':e[0]==='ok'?'#10a37f':'#4a9eff';
+    panel.innerHTML+=`<div style="display:flex;gap:10px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.04);">
+      <span style="color:#565869;min-width:58px;">${ts}</span>
+      <span style="min-width:50px;color:${color};">[${e[0].toUpperCase()}]</span>
+      <span style="color:#ececec;">${e[1]}</span>
+    </div>`;
+  });
+}
+</script>
+</body>
+</html>

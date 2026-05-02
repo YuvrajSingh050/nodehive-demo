@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>NodeHive — Scheduler</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#212121;--s1:#2f2f2f;--s2:#3a3a3a;--border:#4a4a4a;
+  --text:#ececec;--muted:#8e8ea0;--muted2:#565869;
+  --green:#10a37f;--yellow:#f5a623;--blue:#4a9eff;
+  --sans:'Inter',sans-serif;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--sans);overflow:hidden;}
+.shell{height:100vh;display:flex;flex-direction:column;}
+
+.header{height:52px;display:flex;align-items:center;padding:0 24px;gap:12px;border-bottom:1px solid var(--border);background:var(--bg);flex-shrink:0;}
+.logo{font-size:16px;font-weight:600;}
+.logo span{color:var(--green);}
+.device-tag{font-size:10px;font-family:monospace;padding:3px 10px;border-radius:6px;background:var(--s1);border:1px solid var(--border);color:var(--muted);}
+.hspace{flex:1;}
+.conn-s{font-size:10px;font-family:monospace;color:var(--muted);}
+.conn-s.live{color:var(--green);}
+
+.content{flex:1;display:grid;grid-template-rows:1fr 200px;gap:0;overflow:hidden;padding:20px 24px;gap:16px;}
+
+/* Flow diagram */
+.flow{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:24px;display:grid;grid-template-columns:1fr 60px 1fr 60px 1fr;align-items:center;gap:0;}
+
+.flow-box{display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;}
+.flow-icon{width:64px;height:64px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:26px;border:1px solid var(--border);background:var(--s2);transition:all .4s;}
+.flow-icon.pulse{border-color:var(--blue);animation:gpulse .8s infinite;}
+@keyframes gpulse{0%,100%{box-shadow:0 0 0 0 rgba(74,158,255,.3);}50%{box-shadow:0 0 0 8px rgba(74,158,255,0);}}
+.flow-icon.active{border-color:var(--yellow);animation:ypulse .6s infinite;}
+@keyframes ypulse{0%,100%{box-shadow:0 0 0 0 rgba(245,166,35,.3);}50%{box-shadow:0 0 0 8px rgba(245,166,35,0);}}
+.flow-name{font-size:12px;font-weight:600;}
+.flow-sub{font-size:10px;font-family:monospace;color:var(--muted);}
+
+.arrow{display:flex;flex-direction:column;align-items:center;gap:5px;}
+.arr-line{height:2px;width:50px;background:var(--border);position:relative;overflow:hidden;border-radius:1px;}
+.arr-line::after{content:'';position:absolute;top:0;left:-100%;width:100%;height:100%;background:linear-gradient(90deg,transparent,var(--green));border-radius:1px;animation:none;}
+.arr-line.flow::after{animation:arrflow 1s infinite;}
+@keyframes arrflow{from{left:-100%;}to{left:100%;}}
+.arr-label{font-size:9px;font-family:monospace;color:var(--muted);}
+
+/* Nodes column */
+.nodes-col{display:flex;flex-direction:column;gap:10px;}
+.nb{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:10px;background:var(--s2);border:1px solid var(--border);transition:all .3s;}
+.nb.active{border-color:var(--yellow);background:rgba(245,166,35,.06);}
+.nb.done{border-color:var(--green);background:rgba(16,163,127,.06);}
+.nb-dot{width:7px;height:7px;border-radius:50%;background:var(--muted2);flex-shrink:0;transition:all .3s;}
+.nb.active .nb-dot{background:var(--yellow);animation:blink .6s infinite;}
+.nb.done .nb-dot{background:var(--green);}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.1;}}
+.nb-info{flex:1;}
+.nb-name{font-size:12px;font-weight:600;font-family:monospace;}
+.nb-stat{font-size:10px;color:var(--muted);font-family:monospace;margin-top:1px;}
+.nb.active .nb-stat{color:var(--yellow);}
+.nb.done .nb-stat{color:var(--green);}
+.nb-tag{font-size:9px;font-family:monospace;padding:2px 7px;border-radius:5px;background:var(--border);color:var(--muted);}
+.nb.active .nb-tag{background:rgba(245,166,35,.2);color:var(--yellow);}
+.nb.done .nb-tag{background:rgba(16,163,127,.15);color:var(--green);}
+
+/* Bottom split */
+.bottom{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+
+/* Question panel */
+.q-panel{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+.q-label{font-size:9px;font-family:monospace;color:var(--muted);letter-spacing:1.5px;margin-bottom:8px;}
+.q-text{font-size:13px;color:var(--muted);font-style:italic;}
+.q-text.loaded{color:var(--text);font-style:normal;}
+
+/* Log */
+.log{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;overflow:hidden;}
+.log-label{font-size:9px;font-family:monospace;color:var(--muted);letter-spacing:1.5px;margin-bottom:8px;flex-shrink:0;}
+.log-list{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:3px;}
+.log-list::-webkit-scrollbar{width:2px;}
+.log-list::-webkit-scrollbar-thumb{background:var(--border);}
+.le{display:flex;gap:8px;font-size:10px;font-family:monospace;animation:lin .2s ease;}
+@keyframes lin{from{opacity:0;transform:translateX(-4px);}to{opacity:1;}}
+.le-ts{color:var(--muted2);min-width:55px;}
+.le-t{min-width:52px;}
+.le-t.sys{color:var(--blue);}
+.le-t.task{color:var(--yellow);}
+.le-t.ok{color:var(--green);}
+.le-m{color:var(--text);}
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="header">
+    <div class="logo">Node<span>Hive</span></div>
+    <div class="device-tag">SCHEDULER — DEVICE 1</div>
+    <div class="hspace"></div>
+    <div class="conn-s" id="connS">● connecting...</div>
+  </div>
+
+  <div class="content">
+    <div class="flow">
+      <!-- Phone -->
+      <div class="flow-box">
+        <div class="flow-icon" id="phoneIcon">📱</div>
+        <div class="flow-name">PHONE</div>
+        <div class="flow-sub" id="qDisplay">waiting for query...</div>
+      </div>
+
+      <!-- Arrow 1 -->
+      <div class="arrow">
+        <div style="display:flex;align-items:center;">
+          <div class="arr-line" id="arr1"></div>
+          <div style="width:0;height:0;border-top:4px solid transparent;border-bottom:4px solid transparent;border-left:6px solid var(--border);margin-left:-1px;" id="arr1h"></div>
+        </div>
+        <div class="arr-label" id="arr1l">idle</div>
+      </div>
+
+      <!-- Scheduler -->
+      <div class="flow-box">
+        <div class="flow-icon" id="schedIcon">⬡</div>
+        <div class="flow-name">SCHEDULER</div>
+        <div class="flow-sub" id="schedSub">NodeHive Core</div>
+      </div>
+
+      <!-- Arrow 2 -->
+      <div class="arrow">
+        <div style="display:flex;align-items:center;">
+          <div class="arr-line" id="arr2"></div>
+          <div style="width:0;height:0;border-top:4px solid transparent;border-bottom:4px solid transparent;border-left:6px solid var(--border);margin-left:-1px;" id="arr2h"></div>
+        </div>
+        <div class="arr-label" id="arr2l">idle</div>
+      </div>
+
+      <!-- Nodes -->
+      <div class="nodes-col">
+        <div class="nb" id="nb1">
+          <div class="nb-dot"></div>
+          <div class="nb-info"><div class="nb-name">NODE-01</div><div class="nb-stat">standby</div></div>
+          <div class="nb-tag">RAM: 8GB</div>
+        </div>
+        <div class="nb" id="nb2">
+          <div class="nb-dot"></div>
+          <div class="nb-info"><div class="nb-name">NODE-02</div><div class="nb-stat">standby</div></div>
+          <div class="nb-tag">RAM: 16GB</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bottom">
+      <div class="q-panel">
+        <div class="q-label">CURRENT QUERY</div>
+        <div class="q-text" id="qText">Waiting for query from phone...</div>
+        <div style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div style="padding:8px 10px;border-radius:8px;background:var(--s2);border:1px solid var(--border);border-left:3px solid var(--yellow);">
+            <div style="font-size:9px;font-family:monospace;color:var(--yellow);margin-bottom:3px;">NODE-01 ROLE</div>
+            <div style="font-size:10px;color:var(--muted);" id="role1">awaiting task</div>
+          </div>
+          <div style="padding:8px 10px;border-radius:8px;background:var(--s2);border:1px solid var(--border);border-left:3px solid var(--blue);">
+            <div style="font-size:9px;font-family:monospace;color:var(--blue);margin-bottom:3px;">NODE-02 ROLE</div>
+            <div style="font-size:10px;color:var(--muted);" id="role2">awaiting task</div>
+          </div>
+        </div>
+      </div>
+      <div class="log">
+        <div class="log-label">SCHEDULER LOG</div>
+        <div class="log-list" id="logList"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SURL='https://thccdqpthopisgnrwdqf.supabase.co';
+const SKEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRoY2NkcXB0aG9waXNnbnJ3ZHFmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcwOTM3MzgsImV4cCI6MjA5MjY2OTczOH0.EOLDRjNCzDDSGcV8Z_gx2R3OhPuxKh5d_5mbdYBXIeA';
+const sb=supabase.createClient(SURL,SKEY);
+let lastJob=null;
+
+function log(type,msg){
+  const list=document.getElementById('logList');
+  const d=document.createElement('div');d.className='le';
+  const ts=new Date().toTimeString().slice(0,8);
+  d.innerHTML=`<span class="le-ts">${ts}</span><span class="le-t ${type}">[${type.toUpperCase()}]</span><span class="le-m">${msg}</span>`;
+  list.appendChild(d);list.scrollTop=list.scrollHeight;
+}
+
+function setNB(id,state){
+  const el=document.getElementById(id);
+  el.className='nb '+(state==='active'?'active':state==='done'?'done':'');
+  el.querySelector('.nb-stat').textContent=state==='active'?'computing...':state==='done'?'complete ✓':'standby';
+  const tag=el.querySelector('.nb-tag');
+  tag.textContent=state==='active'?'WORKING':state==='done'?'DONE ✓':(id==='nb1'?'RAM: 8GB':'RAM: 16GB');
+}
+
+function setArr(id,flowing){
+  document.getElementById(id).classList.toggle('flow',flowing);
+}
+
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+
+async function handleTask(p){
+  if(p.jobId===lastJob)return;
+  lastJob=p.jobId;
+
+  document.getElementById('phoneIcon').classList.add('pulse');
+  document.getElementById('qDisplay').textContent=p.question.slice(0,30)+'...';
+  document.getElementById('qText').textContent=p.question;
+  document.getElementById('qText').className='q-text loaded';
+  document.getElementById('role1').textContent='definition & background';
+  document.getElementById('role2').textContent='mechanism & examples';
+  log('sys',`Query received from phone`);
+  setArr('arr1',true);
+  document.getElementById('arr1l').textContent='received';
+
+  await sleep(400);
+  document.getElementById('phoneIcon').classList.remove('pulse');
+  document.getElementById('schedIcon').classList.add('active');
+  log('task','Allocating hardware across Node-01 + Node-02');
+  setArr('arr2',true);
+  document.getElementById('arr2l').textContent='allocating';
+  document.getElementById('schedSub').textContent='allocating hardware...';
+
+  await sleep(500);
+  setNB('nb1','active');
+  log('task','Node-01 hardware allocated · contributing 8GB RAM');
+
+  await sleep(300);
+  setNB('nb2','active');
+  log('task','Node-02 hardware allocated · contributing 16GB RAM');
+  log('sys','Combined RAM: 24GB · model loading across both nodes');
+  document.getElementById('arr2l').textContent='computing';
+  document.getElementById('schedSub').textContent='model running...';
+
+  await sleep(3500);
+  setNB('nb1','done');
+  log('ok','Node-01 inference complete');
+  await sleep(400);
+  setNB('nb2','done');
+  log('ok','Node-02 inference complete');
+  log('ok','Results merged · sending to phone');
+  document.getElementById('schedIcon').classList.remove('active');
+  document.getElementById('schedSub').textContent='NodeHive Core';
+  document.getElementById('arr2l').textContent='complete ✓';
+
+  await sleep(3000);
+  // Reset
+  setNB('nb1','');setNB('nb2','');
+  setArr('arr1',false);setArr('arr2',false);
+  document.getElementById('arr1l').textContent='idle';
+  document.getElementById('arr2l').textContent='idle';
+  document.getElementById('qText').textContent='Waiting for query from phone...';
+  document.getElementById('qText').className='q-text';
+  document.getElementById('qDisplay').textContent='waiting for query...';
+  document.getElementById('role1').textContent='awaiting task';
+  document.getElementById('role2').textContent='awaiting task';
+}
+
+sb.channel('nodehive-tasks')
+  .on('broadcast',{event:'new_task'},({payload})=>handleTask(payload))
+  .subscribe(s=>{
+    if(s==='SUBSCRIBED'){
+      const el=document.getElementById('connS');
+      el.textContent='● connected · listening';
+      el.className='conn-s live';
+      log('sys','Scheduler connected to NodeHive network');
+      log('sys','Listening for queries from phone...');
+    }
+  });
+</script>
+</body>
+</html>

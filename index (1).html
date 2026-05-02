@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>NodeHive — Worker Node</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#212121;--s1:#2f2f2f;--s2:#3a3a3a;--border:#4a4a4a;
+  --text:#ececec;--muted:#8e8ea0;--muted2:#565869;
+  --green:#10a37f;--yellow:#f5a623;--blue:#4a9eff;
+  --sans:'Inter',sans-serif;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--sans);overflow:hidden;}
+.shell{height:100vh;display:flex;flex-direction:column;}
+
+.header{height:52px;display:flex;align-items:center;padding:0 24px;gap:12px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.node-name{font-size:16px;font-weight:600;font-family:monospace;}
+.node-sub{font-size:10px;font-family:monospace;color:var(--muted);}
+.hspace{flex:1;}
+.status-badge{display:flex;align-items:center;gap:6px;padding:5px 13px;border-radius:20px;font-size:11px;font-family:monospace;font-weight:500;border:1px solid var(--border);background:var(--s1);color:var(--muted);transition:all .3s;}
+.status-badge.receiving{border-color:var(--blue);background:rgba(74,158,255,.08);color:var(--blue);}
+.status-badge.computing{border-color:var(--yellow);background:rgba(245,166,35,.08);color:var(--yellow);}
+.status-badge.done{border-color:var(--green);background:rgba(16,163,127,.08);color:var(--green);}
+.sb-dot{width:6px;height:6px;border-radius:50%;background:currentColor;}
+.status-badge.computing .sb-dot{animation:blink .5s infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.1;}}
+
+.content{flex:1;display:grid;grid-template-rows:auto 1fr auto;padding:20px 24px;gap:14px;overflow:hidden;}
+
+/* Task panel */
+.task-panel{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:16px;transition:border .3s;}
+.task-panel.active{border-color:var(--yellow);}
+.task-panel.done{border-color:var(--green);}
+.tp-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.tp-label{font-size:9px;font-family:monospace;color:var(--muted);letter-spacing:1.5px;}
+.tp-chip{font-size:10px;font-family:monospace;padding:2px 9px;border-radius:5px;background:var(--s2);color:var(--muted);border:1px solid var(--border);}
+.tp-q{font-size:13px;color:var(--muted);font-style:italic;}
+.tp-q.loaded{color:var(--text);font-style:normal;}
+.tp-role{margin-top:8px;padding:8px 10px;border-radius:7px;background:var(--s2);border-left:3px solid var(--yellow);font-size:11px;font-family:monospace;color:var(--muted);display:none;}
+.tp-role.show{display:block;color:var(--text);}
+
+/* Log */
+.log{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:16px;overflow:hidden;display:flex;flex-direction:column;}
+.log-label{font-size:9px;font-family:monospace;color:var(--muted);letter-spacing:1.5px;margin-bottom:10px;flex-shrink:0;}
+.log-list{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:3px;}
+.log-list::-webkit-scrollbar{width:2px;}
+.log-list::-webkit-scrollbar-thumb{background:var(--border);}
+.le{display:flex;gap:8px;font-size:10px;font-family:monospace;animation:lin .2s ease;}
+@keyframes lin{from{opacity:0;transform:translateX(-4px);}to{opacity:1;}}
+.le-ts{color:var(--muted2);min-width:55px;}
+.le-t{min-width:52px;}
+.le-t.sys{color:var(--blue);}
+.le-t.task{color:var(--yellow);}
+.le-t.ok{color:var(--green);}
+.le-m{color:var(--text);}
+
+/* Stats */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+.stat{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:13px;}
+.stat-l{font-size:9px;font-family:monospace;color:var(--muted);letter-spacing:1.5px;margin-bottom:5px;}
+.stat-v{font-size:22px;font-weight:700;}
+.stat-v.g{color:var(--green);}
+.stat-v.y{color:var(--yellow);}
+.stat-v.b{color:var(--blue);}
+.stat-v.m{color:var(--muted);}
+.bar-row{display:flex;justify-content:space-between;font-size:9px;font-family:monospace;color:var(--muted);margin:8px 0 4px;}
+.bar{height:3px;background:var(--s2);border-radius:2px;overflow:hidden;}
+.bar-fill{height:100%;background:var(--green);border-radius:2px;transition:width 1s ease;}
+.bar-fill.active{background:var(--yellow);}
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="header">
+    <div>
+      <div class="node-name" id="nodeName">NODE-01</div>
+      <div class="node-sub" id="nodeSub">Tier 2 · RAM: 8GB · Delhi, IN</div>
+    </div>
+    <div class="hspace"></div>
+    <div style="font-size:10px;font-family:monospace;color:var(--muted);margin-right:12px;" id="connLabel">connecting...</div>
+    <div class="status-badge" id="statusBadge"><div class="sb-dot"></div><span id="statusText">STANDBY</span></div>
+  </div>
+
+  <div class="content">
+    <div class="task-panel" id="taskPanel">
+      <div class="tp-row">
+        <div class="tp-label">ASSIGNED TASK</div>
+        <div class="tp-chip" id="taskChip">WAITING</div>
+      </div>
+      <div class="tp-q" id="taskQ">Waiting for task assignment from NodeHive scheduler...</div>
+      <div class="tp-role" id="taskRole"></div>
+    </div>
+
+    <div class="log">
+      <div class="log-label">NODE LOG</div>
+      <div class="log-list" id="logList"></div>
+    </div>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-l">CPU USAGE</div>
+        <div class="stat-v m" id="cpuVal">3%</div>
+        <div class="bar-row"><span>utilisation</span><span id="cpuPct">3%</span></div>
+        <div class="bar"><div class="bar-fill" id="cpuBar" style="width:3%"></div></div>
+      </div>
+      <div class="stat">
+        <div class="stat-l">TASKS DONE</div>
+        <div class="stat-v g" id="tasksDone">0</div>
+      </div>
+      <div class="stat">
+        <div class="stat-l">REPUTATION</div>
+        <div class="stat-v b" id="rep">88</div>
+      </div>
+      <div class="stat">
+        <div class="stat-l">EARNINGS</div>
+        <div class="stat-v y" id="earn">₹0.00</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SURL='https://thccdqpthopisgnrwdqf.supabase.co';
+const SKEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRoY2NkcXB0aG9waXNnbnJ3ZHFmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcwOTM3MzgsImV4cCI6MjA5MjY2OTczOH0.EOLDRjNCzDDSGcV8Z_gx2R3OhPuxKh5d_5mbdYBXIeA';
+const sb=supabase.createClient(SURL,SKEY);
+
+const params=new URLSearchParams(window.location.search);
+const nodeNum=parseInt(params.get('node')||'1');
+const isN1=nodeNum===1;
+
+document.getElementById('nodeName').textContent=`NODE-0${nodeNum}`;
+document.getElementById('nodeSub').textContent=isN1?'Tier 2 · RAM: 8GB · Delhi, IN':'Tier 1 · RAM: 16GB · Mumbai, IN';
+document.title=`NodeHive — NODE-0${nodeNum}`;
+
+let tasksDone=0,earnings=0,lastJob=null,processing=false;
+
+function log(type,msg){
+  const list=document.getElementById('logList');
+  const d=document.createElement('div');d.className='le';
+  const ts=new Date().toTimeString().slice(0,8);
+  d.innerHTML=`<span class="le-ts">${ts}</span><span class="le-t ${type}">[${type.toUpperCase()}]</span><span class="le-m">${msg}</span>`;
+  list.appendChild(d);list.scrollTop=list.scrollHeight;
+}
+
+function setStatus(state){
+  const b=document.getElementById('statusBadge');
+  const t=document.getElementById('statusText');
+  b.className='status-badge '+(state==='receiving'?'receiving':state==='computing'?'computing':state==='done'?'done':'');
+  t.textContent=state.toUpperCase();
+}
+
+function setCPU(pct){
+  document.getElementById('cpuVal').textContent=pct+'%';
+  document.getElementById('cpuPct').textContent=pct+'%';
+  document.getElementById('cpuVal').className='stat-v '+(pct>70?'y':pct>30?'b':'m');
+  const bar=document.getElementById('cpuBar');
+  bar.style.width=pct+'%';
+  bar.className='bar-fill '+(pct>30?'active':'');
+}
+
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+
+async function handleTask(p){
+  if(processing||p.jobId===lastJob)return;
+  processing=true;lastJob=p.jobId;
+
+  const role=isN1?'Definition & background':'Mechanism & examples';
+  const taskId=isN1?'TASK-A':'TASK-B';
+
+  setStatus('receiving');
+  document.getElementById('taskPanel').className='task-panel active';
+  document.getElementById('taskChip').textContent=taskId;
+  document.getElementById('taskQ').textContent=p.question;
+  document.getElementById('taskQ').className='tp-q loaded';
+  document.getElementById('taskRole').textContent=`My role: ${role}`;
+  document.getElementById('taskRole').className='tp-role show';
+  log('sys',`Task ${taskId} received from scheduler`);
+  log('task','Allocating RAM to NodeHive pool...');
+
+  await sleep(400);
+  setCPU(38);
+  log('task','RAM allocated · loading model weights...');
+
+  await sleep(300);
+  setStatus('computing');
+  setCPU(82);
+  log('task',`Running inference · ${role.toLowerCase()}`);
+
+  for(let i=1;i<=4;i++){
+    await sleep(600);
+    setCPU(65+Math.floor(Math.random()*25));
+    log('task',`Computing chunk ${i}/4...`);
+  }
+
+  await sleep(400);
+  log('ok','Inference complete · result ready');
+  log('ok','Sending result to orchestrator...');
+  setStatus('done');
+  setCPU(8);
+  document.getElementById('taskPanel').className='task-panel done';
+  document.getElementById('taskChip').textContent='DONE ✓';
+
+  tasksDone++;
+  earnings+=Math.random()*0.6+0.3;
+  document.getElementById('tasksDone').textContent=tasksDone;
+  document.getElementById('earn').textContent='₹'+earnings.toFixed(2);
+  const rep=Math.min(100,88+tasksDone*2);
+  document.getElementById('rep').textContent=rep;
+  log('ok',`Earnings: ₹${earnings.toFixed(2)} · reputation: ${rep}`);
+
+  await sleep(3500);
+  setStatus('standby');
+  document.getElementById('taskPanel').className='task-panel';
+  document.getElementById('taskChip').textContent='WAITING';
+  document.getElementById('taskQ').textContent='Waiting for task assignment from NodeHive scheduler...';
+  document.getElementById('taskQ').className='tp-q';
+  document.getElementById('taskRole').className='tp-role';
+  setCPU(3);
+  processing=false;
+}
+
+sb.channel('nodehive-tasks')
+  .on('broadcast',{event:'new_task'},({payload})=>handleTask(payload))
+  .subscribe(s=>{
+    if(s==='SUBSCRIBED'){
+      document.getElementById('connLabel').textContent='● connected';
+      document.getElementById('connLabel').style.color='var(--green)';
+      log('sys',`NODE-0${nodeNum} connected to NodeHive network`);
+      log('sys','RAM available · awaiting hardware allocation');
+    }
+  });
+</script>
+</body>
+</html>
